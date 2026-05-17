@@ -136,7 +136,12 @@ async function ghLoad(){
     if(res.status===404)return true;
     if(!res.ok)throw new Error('GitHub error '+res.status);
     var data=await res.json();
-    var content=JSON.parse(atob(data.content.replace(/\n/g,'')));
+    // Správné dekódování UTF-8 s diakritikou
+    var base64=data.content.replace(/\n/g,'');
+    var binary=atob(base64);
+    var bytes=new Uint8Array(binary.length);
+    for(var i=0;i<binary.length;i++){bytes[i]=binary.charCodeAt(i);}
+    var content=JSON.parse(new TextDecoder('utf-8').decode(bytes));
     exps=content;
     localStorage.setItem('lkv3',JSON.stringify(exps));
     localStorage.setItem('gh_sha_v',data.sha);
@@ -148,7 +153,12 @@ async function ghSave(){
   var token=ghToken();
   if(!token){saveAll();return;}
   try{
-    var content=btoa(unescape(encodeURIComponent(JSON.stringify(exps,null,2))));
+    var json=JSON.stringify(exps,null,2);
+    // Správné kódování pro UTF-8 s diakritikou
+    var bytes=new TextEncoder().encode(json);
+    var binary='';
+    bytes.forEach(function(b){binary+=String.fromCharCode(b);});
+    var content=btoa(binary);
     var sha=localStorage.getItem('gh_sha_v')||'';
     var bodyObj={message:'Výdaje '+new Date().toISOString().slice(0,10),content:content};
     if(sha)bodyObj.sha=sha;
@@ -421,7 +431,9 @@ function handleImport(input){
   var reader=new FileReader();
   reader.onload=function(e){
     try{
-      var text=e.target.result.replace(/^\uFEFF/,'');
+      // Použij TextDecoder pro správné UTF-8 dekódování na iOS
+      var bytes=new Uint8Array(e.target.result);
+      var text=new TextDecoder('utf-8').decode(bytes).replace(/^\uFEFF/,'');
       var lines=text.trim().split('\n');
       if(lines.length<2){showToast('CSV je prázdné');return}
       var imported=0;
@@ -452,9 +464,10 @@ function handleImport(input){
       renderHome();
     }catch(err){
       showToast('Chyba při importu');
+      console.error(err);
     }
   };
-  reader.readAsText(file,'UTF-8');
+  reader.readAsArrayBuffer(file);
   input.value='';
 }
 
