@@ -119,6 +119,60 @@ var curTab=0;
 var selCat='';
 var selSub='';
 
+// ── GITHUB SYNC ───────────────────────────────────────────────────────
+var GH_USER='lukasrottercz-png';
+var GH_REPO='finance';
+var GH_FILE='vydaje_data.json';
+
+function ghToken(){return localStorage.getItem('gh_token')||'';}
+
+async function ghLoad(){
+  var token=ghToken();
+  if(!token)return false;
+  try{
+    var res=await fetch('https://api.github.com/repos/'+GH_USER+'/'+GH_REPO+'/contents/'+GH_FILE,{
+      headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+    });
+    if(res.status===404)return true;
+    if(!res.ok)throw new Error('GitHub error '+res.status);
+    var data=await res.json();
+    var content=JSON.parse(atob(data.content.replace(/\n/g,'')));
+    exps=content;
+    localStorage.setItem('lkv3',JSON.stringify(exps));
+    localStorage.setItem('gh_sha_v',data.sha);
+    return true;
+  }catch(e){console.error('ghLoad:',e);return false;}
+}
+
+async function ghSave(){
+  var token=ghToken();
+  if(!token){saveAll();return;}
+  try{
+    var content=btoa(unescape(encodeURIComponent(JSON.stringify(exps,null,2))));
+    var sha=localStorage.getItem('gh_sha_v')||'';
+    var bodyObj={message:'Výdaje '+new Date().toISOString().slice(0,10),content:content};
+    if(sha)bodyObj.sha=sha;
+    var res=await fetch('https://api.github.com/repos/'+GH_USER+'/'+GH_REPO+'/contents/'+GH_FILE,{
+      method:'PUT',
+      headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify(bodyObj)
+    });
+    if(!res.ok)throw new Error('GitHub save error '+res.status);
+    var data=await res.json();
+    localStorage.setItem('gh_sha_v',data.content.sha);
+    localStorage.setItem('lkv3',JSON.stringify(exps));
+  }catch(e){console.error('ghSave:',e);saveAll();showToast('GitHub nedostupný — uloženo lokálně');}
+}
+
+function saveGhToken(){
+  var inp=document.getElementById('gh-token-inp');
+  if(!inp||!inp.value.trim())return;
+  localStorage.setItem('gh_token',inp.value.trim());
+  localStorage.removeItem('gh_sha_v');
+  showToast('Token uložen — načítám data…');
+  ghLoad().then(function(){renderHome();});
+}
+
 function saveAll(){try{localStorage.setItem('lkv3',JSON.stringify(exps))}catch(e){}}
 function fmt(n){return Math.round(n).toLocaleString('cs-CZ')+' Kč'}
 function today(){var d=new Date();return d.toISOString().slice(0,10)}
@@ -224,7 +278,7 @@ function doSave(){
     date:dtEl?dtEl.value:today()
   };
   exps.push(entry);
-  saveAll();
+  ghSave();
   showToast('Uloženo ✓');
   goHome();
 }
@@ -316,7 +370,19 @@ function renderKat(){
 
 function renderExport(){
   var total=exps.reduce(function(s,e){return s+(e.amount||0)},0);
-  var h='<div class="card">'
+  var tok=ghToken();
+  var ghSection=!tok
+    ?'<div class="card" style="margin-bottom:16px">'
+      +'<div style="padding:14px 16px">'
+      +'<div style="font-size:15px;font-weight:500;color:#1c1c1e;margin-bottom:8px">GitHub synchronizace</div>'
+      +'<div style="font-size:13px;color:#6c6c70;margin-bottom:10px">Zadej token pro sync napříč zařízeními</div>'
+      +'<input type="password" id="gh-token-inp" placeholder="ghp_..." style="width:100%;font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid #e0e0e0;background:#f2f2f7;color:#1c1c1e;margin-bottom:8px">'
+      +'<button onclick="saveGhToken()" style="width:100%;padding:12px;background:#007aff;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer">Uložit a načíst data</button>'
+      +'</div></div>'
+    :'<div style="font-size:13px;color:#34c759;padding:4px 0 12px">● GitHub sync aktivní</div>';
+
+  var h=ghSection
+    +'<div class="card">'
     +'<div class="crow" onclick="exportCSV()"><div class="crow-icon">📤</div><div class="crow-label">Exportovat CSV</div></div>'
     +'<div class="crow" onclick="importCSV()"><div class="crow-icon">📥</div><div class="crow-label">Importovat CSV</div></div>'
     +'<div class="crow" onclick="clearAll()"><div class="crow-icon">🗑</div><div class="crow-label" style="color:#ff3b30">Smazat vše</div></div>'
@@ -341,7 +407,7 @@ function renderExport(){
 function delExp(id){
   if(!confirm('Smazat výdaj?'))return;
   exps=exps.filter(function(e){return e.id!==id});
-  saveAll();renderHome();showToast('Smazáno');
+  ghSave();renderHome();showToast('Smazáno');
 }
 
 function importCSV(){
@@ -368,12 +434,10 @@ function handleImport(input){
         var amount=parseFloat(cols[3])||0;
         var note=cols[4]?cols[4].trim():'';
         if(!date||amount<=0)continue;
-        // Najdi catKey podle labelu
         var catKey='ostatni';
         for(var j=0;j<CATS.length;j++){
           if(CATS[j].l===catLabel){catKey=CATS[j].k;break}
         }
-        // Přidej jen pokud ještě neexistuje stejný záznam
         var dup=false;
         for(var k=0;k<exps.length;k++){
           if(exps[k].date===date&&exps[k].amount===amount&&exps[k].catKey===catKey){dup=true;break}
@@ -383,7 +447,7 @@ function handleImport(input){
           imported++;
         }
       }
-      saveAll();
+      ghSave();
       showToast('Importováno '+imported+' výdajů ✓');
       renderHome();
     }catch(err){
@@ -409,11 +473,18 @@ function exportCSV(){
 
 function clearAll(){
   if(!confirm('Smazat vše?'))return;
-  exps=[];saveAll();renderHome();showToast('Smazáno');
+  exps=[];ghSave();renderHome();showToast('Smazáno');
 }
 
-// Spuštění
-window.onload=function(){renderHome()};
+// Spuštění — načti z GitHubu pokud máme token
+window.onload=function(){
+  var token=ghToken();
+  if(token){
+    ghLoad().then(function(){renderHome();});
+  } else {
+    renderHome();
+  }
+};
 </script>
 </body>
 </html>
