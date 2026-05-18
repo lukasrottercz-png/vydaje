@@ -305,14 +305,6 @@ function renderTrvale(){
   return h;
 }
 
-function openAddTrvala(){
-  editTrvalaIdx=-1;
-  document.getElementById('trvale-page-title').textContent='Nová trvalá platba';
-  buildTrvalaForm(null);
-  document.getElementById('home-page').style.display='none';
-  document.getElementById('trvale-page').style.display='block';
-}
-
 function openEditTrvala(idx){
   editTrvalaIdx=idx;
   document.getElementById('trvale-page-title').textContent='Upravit platbu';
@@ -391,7 +383,21 @@ function deleteTrvala(idx){
 function closeTrvale(){
   document.getElementById('trvale-page').style.display='none';
   document.getElementById('home-page').style.display='block';
+  curTab=2; // Vrať se na záložku Trvalé
+  for(var j=0;j<4;j++){
+    var el=document.getElementById('tab'+j);
+    if(el)el.className='tbi'+(j===2?' on':'');
+  }
   renderHome();
+}
+
+function openAddTrvala(){
+  curTab=2;
+  editTrvalaIdx=-1;
+  document.getElementById('trvale-page-title').textContent='Nová trvalá platba';
+  buildTrvalaForm(null);
+  document.getElementById('home-page').style.display='none';
+  document.getElementById('trvale-page').style.display='block';
 }
 
 function goHome(){
