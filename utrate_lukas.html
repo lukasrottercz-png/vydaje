@@ -81,7 +81,8 @@ body{font-family:-apple-system,sans-serif;background:#f2f2f7;color:#1c1c1e;min-h
   <div class="tabbar">
     <button class="tbi on" id="tab0" onclick="tab(0)"><span class="tbi-icon">🏠</span><span class="tbi-label">Přehled</span></button>
     <button class="tbi" id="tab1" onclick="tab(1)"><span class="tbi-icon">📊</span><span class="tbi-label">Kategorie</span></button>
-    <button class="tbi" id="tab2" onclick="tab(2)"><span class="tbi-icon">⬇️</span><span class="tbi-label">Export</span></button>
+    <button class="tbi" id="tab2" onclick="tab(2)"><span class="tbi-icon">📅</span><span class="tbi-label">Trvalé</span></button>
+    <button class="tbi" id="tab3" onclick="tab(3)"><span class="tbi-icon">⬇️</span><span class="tbi-label">Export</span></button>
   </div>
 </div>
 
@@ -94,7 +95,14 @@ body{font-family:-apple-system,sans-serif;background:#f2f2f7;color:#1c1c1e;min-h
   <div class="content" id="add-content"></div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div id="trvale-page" style="display:none">
+  <div class="navbar">
+    <button class="back-btn" onclick="closeTrvale()">‹ Zpět</button>
+    <span class="navbar-title" id="trvale-page-title">Nová trvalá platba</span>
+    <button class="nav-btn" onclick="saveTrvala()">Uložit</button>
+  </div>
+  <div class="content" id="trvale-form-content"></div>
+</div>
 
 <script>
 var CATS=[
@@ -115,9 +123,9 @@ var CATS=[
 var exps=[];
 try{exps=JSON.parse(localStorage.getItem('lkv3')||'[]')}catch(e){exps=[]}
 
-var curTab=0;
-var selCat='';
-var selSub='';
+var trvale=[];
+try{trvale=JSON.parse(localStorage.getItem('lk_trvale')||'[]')}catch(e){trvale=[]}
+var editTrvalaIdx=-1;
 
 // ── GITHUB SYNC ───────────────────────────────────────────────────────
 var GH_USER='lukasrottercz-png';
@@ -183,7 +191,51 @@ function saveGhToken(){
   ghLoad().then(function(){renderHome();});
 }
 
-function saveAll(){try{localStorage.setItem('lkv3',JSON.stringify(exps))}catch(e){}}
+var GH_FILE_T='trvale_data.json';
+
+async function ghSaveTrvale(){
+  var token=ghToken();
+  if(!token){localStorage.setItem('lk_trvale',JSON.stringify(trvale));return;}
+  try{
+    var json=JSON.stringify(trvale,null,2);
+    var bytes=new TextEncoder().encode(json);
+    var binary='';
+    bytes.forEach(function(b){binary+=String.fromCharCode(b);});
+    var content=btoa(binary);
+    var sha=localStorage.getItem('gh_sha_t')||'';
+    var bodyObj={message:'Trvalé platby '+new Date().toISOString().slice(0,10),content:content};
+    if(sha)bodyObj.sha=sha;
+    var res=await fetch('https://api.github.com/repos/'+GH_USER+'/'+GH_REPO+'/contents/'+GH_FILE_T,{
+      method:'PUT',
+      headers:{'Authorization':'token '+ghToken(),'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify(bodyObj)
+    });
+    if(!res.ok)throw new Error('GitHub save error '+res.status);
+    var data=await res.json();
+    localStorage.setItem('gh_sha_t',data.content.sha);
+    localStorage.setItem('lk_trvale',JSON.stringify(trvale));
+  }catch(e){console.error('ghSaveTrvale:',e);localStorage.setItem('lk_trvale',JSON.stringify(trvale));}
+}
+
+async function ghLoadTrvale(){
+  var token=ghToken();
+  if(!token)return;
+  try{
+    var res=await fetch('https://api.github.com/repos/'+GH_USER+'/'+GH_REPO+'/contents/'+GH_FILE_T,{
+      headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+    });
+    if(res.status===404)return;
+    if(!res.ok)return;
+    var data=await res.json();
+    var base64=data.content.replace(/\n/g,'');
+    var binary=atob(base64);
+    var byt=new Uint8Array(binary.length);
+    for(var i=0;i<binary.length;i++){byt[i]=binary.charCodeAt(i);}
+    trvale=JSON.parse(new TextDecoder('utf-8').decode(byt));
+    localStorage.setItem('gh_sha_t',data.sha);
+    localStorage.setItem('lk_trvale',JSON.stringify(trvale));
+  }catch(e){console.error('ghLoadTrvale:',e);}
+}
 function fmt(n){return Math.round(n).toLocaleString('cs-CZ')+' Kč'}
 function today(){var d=new Date();return d.toISOString().slice(0,10)}
 function catByKey(k){for(var i=0;i<CATS.length;i++){if(CATS[i].k===k)return CATS[i]}return null}
@@ -196,10 +248,139 @@ function showToast(m){
 
 function tab(i){
   curTab=i;
-  for(var j=0;j<3;j++){
+  for(var j=0;j<4;j++){
     var el=document.getElementById('tab'+j);
     if(el)el.className='tbi'+(i===j?' on':'');
   }
+  // Zobraz/skryj + Přidat tlačítko
+  var navBtn=document.getElementById('nav-action');
+  if(navBtn)navBtn.style.display=(i===2)?'block':'block';
+  renderHome();
+}
+
+// ── TRVALÉ PLATBY ─────────────────────────────────────────────────────
+var editTrvalaIdx=-1;
+
+function isActive(t){
+  var now=new Date().toISOString().slice(0,10);
+  if(t.od&&now<t.od)return false;
+  if(t.do&&now>t.do)return false;
+  return true;
+}
+
+function renderTrvale(){
+  var aktivni=trvale.filter(isActive);
+  var neaktivni=trvale.filter(function(t){return !isActive(t);});
+  var total=aktivni.reduce(function(s,t){return s+(t.castka||0)},0);
+
+  if(!trvale.length) return '<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">Žádné trvalé platby</div><div class="empty-sub">Klepni na + Přidat nahoře</div></div>';
+
+  var h='<div class="sec-hdr"><span>Aktivní platby</span><span style="color:#ff3b30">'+fmt(total)+' / měs.</span></div><div class="card">';
+  if(!aktivni.length)h+='<div style="padding:14px 16px;font-size:14px;color:#8e8e93">Žádné aktivní platby</div>';
+  aktivni.forEach(function(t){
+    var idx=trvale.indexOf(t);
+    h+='<div class="exp-row" onclick="openEditTrvala('+idx+')">'
+      +'<div class="exp-info"><div class="exp-cat">'+t.nazev+'</div>'
+      +'<div class="exp-sub">'+t.kat+(t.od?' · od '+t.od:'')+(t.do?' · do '+t.do:' · neomezeně')+'</div></div>'
+      +'<div class="exp-amt">'+fmt(t.castka)+'</div>'
+      +'</div>';
+  });
+  h+='</div>';
+  if(neaktivni.length){
+    h+='<div class="sec-hdr">Neaktivní / skončené</div><div class="card">';
+    neaktivni.forEach(function(t){
+      var idx=trvale.indexOf(t);
+      h+='<div class="exp-row" onclick="openEditTrvala('+idx+')" style="opacity:.5">'
+        +'<div class="exp-info"><div class="exp-cat">'+t.nazev+'</div>'
+        +'<div class="exp-sub">'+t.kat+(t.do?' · do '+t.do:'')+'</div></div>'
+        +'<div class="exp-amt">'+fmt(t.castka)+'</div>'
+        +'</div>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+
+function openAddTrvala(){
+  editTrvalaIdx=-1;
+  document.getElementById('trvale-page-title').textContent='Nová trvalá platba';
+  buildTrvalaForm(null);
+  document.getElementById('home-page').style.display='none';
+  document.getElementById('trvale-page').style.display='block';
+}
+
+function openEditTrvala(idx){
+  editTrvalaIdx=idx;
+  document.getElementById('trvale-page-title').textContent='Upravit platbu';
+  buildTrvalaForm(trvale[idx]);
+  document.getElementById('home-page').style.display='none';
+  document.getElementById('trvale-page').style.display='block';
+}
+
+function buildTrvalaForm(t){
+  var nazev=t?t.nazev:'';
+  var castka=t?t.castka:'';
+  var kat=t?t.kat:'Bydlení';
+  var od=t?t.od:'';
+  var doc=t?(t.do||''):'';
+  var cats=['Bydlení','Doprava','Rodina','Pojištění','Spoření','Předplatné','Ostatní'];
+  var html='<div class="amount-box">'
+    +'<input id="t_castka" class="amt-inp" type="number" inputmode="decimal" placeholder="0" value="'+(castka||'')+'">'
+    +'<div style="font-size:14px;color:#6c6c70;margin-top:8px">Kč / měsíc</div>'
+    +'</div>'
+    +'<div class="card" style="padding:0;margin-bottom:16px">'
+    +'<div style="padding:14px 16px;border-bottom:1px solid #f0f0f0">'
+    +'<div style="font-size:13px;color:#6c6c70;margin-bottom:6px">Název</div>'
+    +'<input id="t_nazev" type="text" value="'+nazev+'" placeholder="Např. Záloha byt" style="width:100%;font-size:17px;border:none;outline:none;color:#1c1c1e;background:none">'
+    +'</div>'
+    +'<div style="padding:14px 16px;border-bottom:1px solid #f0f0f0">'
+    +'<div style="font-size:13px;color:#6c6c70;margin-bottom:6px">Kategorie</div>'
+    +'<select id="t_kat" style="width:100%;font-size:17px;border:none;outline:none;color:#1c1c1e;background:none">'
+    +cats.map(function(c){return '<option'+(c===kat?' selected':'')+'>'+c+'</option>'}).join('')
+    +'</select>'
+    +'</div>'
+    +'<div style="padding:14px 16px;border-bottom:1px solid #f0f0f0">'
+    +'<div style="font-size:13px;color:#6c6c70;margin-bottom:6px">Platnost od</div>'
+    +'<input id="t_od" type="date" value="'+od+'" style="font-size:17px;border:none;outline:none;color:#1c1c1e;background:none">'
+    +'</div>'
+    +'<div style="padding:14px 16px">'
+    +'<div style="font-size:13px;color:#6c6c70;margin-bottom:6px">Platnost do (prázdné = neomezeně)</div>'
+    +'<input id="t_do" type="date" value="'+doc+'" style="font-size:17px;border:none;outline:none;color:#1c1c1e;background:none">'
+    +'</div>'
+    +'</div>';
+  if(editTrvalaIdx>=0){
+    html+='<button onclick="deleteTrvala('+editTrvalaIdx+')" style="width:100%;padding:14px;background:none;color:#ff3b30;border:1px solid #ff3b30;border-radius:13px;font-size:16px;cursor:pointer;font-family:inherit;margin-bottom:12px">Smazat platbu</button>';
+  }
+  document.getElementById('trvale-form-content').innerHTML=html;
+}
+
+function saveTrvala(){
+  var nazev=document.getElementById('t_nazev').value.trim();
+  var castka=parseFloat(document.getElementById('t_castka').value)||0;
+  var kat=document.getElementById('t_kat').value;
+  var od=document.getElementById('t_od').value;
+  var doc=document.getElementById('t_do').value;
+  if(!nazev){showToast('Zadej název');return;}
+  if(castka<=0){showToast('Zadej částku');return;}
+  var entry={id:Date.now().toString(),nazev:nazev,castka:castka,kat:kat,od:od,do:doc};
+  if(editTrvalaIdx>=0){trvale[editTrvalaIdx]=entry;}
+  else{trvale.push(entry);}
+  ghSaveTrvale();
+  showToast('Uloženo ✓');
+  closeTrvale();
+}
+
+function deleteTrvala(idx){
+  if(!confirm('Smazat tuto platbu?'))return;
+  trvale.splice(idx,1);
+  ghSaveTrvale();
+  showToast('Smazáno');
+  closeTrvale();
+}
+
+function closeTrvale(){
+  document.getElementById('trvale-page').style.display='none';
+  document.getElementById('home-page').style.display='block';
   renderHome();
 }
 
@@ -296,8 +477,16 @@ function doSave(){
 function renderHome(){
   var el=document.getElementById('main-content');
   if(!el)return;
+  // Uprav tlačítko podle záložky
+  var navBtn=document.getElementById('nav-action');
+  if(navBtn){
+    if(curTab===2){navBtn.textContent='+ Přidat';navBtn.onclick=openAddTrvala;}
+    else{navBtn.textContent='+ Přidat';navBtn.onclick=openAdd;}
+    navBtn.style.display=(curTab===3)?'none':'block';
+  }
   if(curTab===0)el.innerHTML=renderPrehled();
   else if(curTab===1)el.innerHTML=renderKat();
+  else if(curTab===2)el.innerHTML=renderTrvale();
   else el.innerHTML=renderExport();
 }
 
@@ -493,7 +682,7 @@ function clearAll(){
 window.onload=function(){
   var token=ghToken();
   if(token){
-    ghLoad().then(function(){renderHome();});
+    Promise.all([ghLoad(),ghLoadTrvale()]).then(function(){renderHome();});
   } else {
     renderHome();
   }
