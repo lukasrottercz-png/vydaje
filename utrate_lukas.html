@@ -325,10 +325,11 @@ function buildTrvalaForm(t){
   var nazev=t?t.nazev:'';
   var castka=t?t.castka:'';
   var kat=t?t.kat:'Bydlení';
-  var od=t?t.od:'';
+  var od=t?(t.od||''):new Date().toISOString().slice(0,10);
   var doc=t?(t.do||''):'';
   var cats=['Bydlení','Doprava','Rodina','Pojištění','Spoření','Předplatné','Ostatní'];
   var html='<div class="amount-box">'
+    +'<input id="t_castka" class="amt-inp" type="number" inputmode="decimal" placeholder="0" value="'+(castka||'')+'">'
     +'<div style="font-size:14px;color:#6c6c70;margin-top:8px">Kč / měsíc</div>'
     +'</div>'
     +'<div class="card" style="padding:0;margin-bottom:16px">'
