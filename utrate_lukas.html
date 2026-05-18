@@ -75,6 +75,7 @@ body{font-family:-apple-system,sans-serif;background:#f2f2f7;color:#1c1c1e;min-h
 
 <div id="home-page">
   <div class="navbar">
+    <button class="nav-btn" id="nav-sync" onclick="syncNow()" style="background:none;color:#007aff;font-size:20px;padding:4px 8px">↻</button>
     <span class="navbar-title" id="nav-title">Výdaje — Lukáš</span>
     <button class="nav-btn" id="nav-action" onclick="openAdd()">+ Přidat</button>
   </div>
@@ -248,6 +249,15 @@ async function ghLoadTrvale(){
 function fmt(n){return Math.round(n).toLocaleString('cs-CZ')+' Kč'}
 function today(){var d=new Date();return d.toISOString().slice(0,10)}
 function catByKey(k){for(var i=0;i<CATS.length;i++){if(CATS[i].k===k)return CATS[i]}return null}
+
+async function syncNow(){
+  var btn=document.getElementById('nav-sync');
+  if(btn)btn.style.opacity='0.4';
+  await Promise.all([ghLoad(),ghLoadTrvale()]);
+  renderHome();
+  showToast('Synchronizováno ✓');
+  if(btn)btn.style.opacity='1';
+}
 
 function showToast(m){
   var t=document.getElementById('toast');
