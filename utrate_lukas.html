@@ -123,6 +123,10 @@ var CATS=[
 var exps=[];
 try{exps=JSON.parse(localStorage.getItem('lkv3')||'[]')}catch(e){exps=[]}
 
+var curTab=0;
+var selCat='';
+var selSub='';
+
 var trvale=[];
 try{trvale=JSON.parse(localStorage.getItem('lk_trvale')||'[]')}catch(e){trvale=[]}
 var editTrvalaIdx=-1;
@@ -323,8 +327,8 @@ function buildTrvalaForm(t){
   var kat=t?t.kat:'Bydlení';
   var od=t?t.od:'';
   var doc=t?(t.do||''):'';
+  var cats=['Bydlení','Doprava','Rodina','Pojištění','Spoření','Předplatné','Ostatní'];
   var html='<div class="amount-box">'
-    +'<input id="t_castka" class="amt-inp" type="number" inputmode="decimal" placeholder="0" value="'+(castka||'')+'">'
     +'<div style="font-size:14px;color:#6c6c70;margin-top:8px">Kč / měsíc</div>'
     +'</div>'
     +'<div class="card" style="padding:0;margin-bottom:16px">'
