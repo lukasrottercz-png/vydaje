@@ -348,7 +348,7 @@ function buildTrvalaForm(t){
     +'<input id="t_od" type="date" value="'+od+'" style="font-size:17px;border:none;outline:none;color:#1c1c1e;background:none">'
     +'</div>'
     +'<div style="padding:14px 16px">'
-    +'<div style="font-size:13px;color:#6c6c70;margin-bottom:6px">Platnost do <span style="color:#007aff;cursor:pointer;font-size:12px" onclick="document.getElementById(\'t_do\').value=\'\'">Vymazat</span></div>'
+    +'<div style="font-size:13px;color:#6c6c70;margin-bottom:6px">Platnost do <span style="color:#007aff;cursor:pointer;font-size:12px" onclick="vymazatDo()">Vymazat</span></div>'
     +'<input id="t_do" type="date" value="'+doc+'" style="font-size:17px;border:none;outline:none;color:#1c1c1e;background:none;width:100%">'
     +'<div style="font-size:12px;color:#8e8e93;margin-top:4px">Prázdné = neomezeně</div>'
     +'</div>'
@@ -357,6 +357,11 @@ function buildTrvalaForm(t){
     html+='<button onclick="deleteTrvala('+editTrvalaIdx+')" style="width:100%;padding:14px;background:none;color:#ff3b30;border:1px solid #ff3b30;border-radius:13px;font-size:16px;cursor:pointer;font-family:inherit;margin-bottom:12px">Smazat platbu</button>';
   }
   document.getElementById('trvale-form-content').innerHTML=html;
+}
+
+function vymazatDo(){
+  var el=document.getElementById('t_do');
+  if(el)el.value='';
 }
 
 function saveTrvala(){
