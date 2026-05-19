@@ -109,7 +109,7 @@ body{font-family:-apple-system,sans-serif;background:#f2f2f7;color:#1c1c1e;min-h
 <script>
 var CATS=[
   {k:'bydleni',    i:'🏠',l:'Bydlení',       s:['Nájem / záloha','Elektřina','Plyn','Internet','Opravy','Vybavení','Zahrada']},
-  {k:'doprava',    i:'🚗',l:'Doprava',        s:['Pohonné hmoty','Pojištění','Servis','Dálniční známka','Parkování','MHD','Mytí auta']},
+  {k:'doprava',    i:'🚗',l:'Doprava',        s:['CNG — Octavia','Benzín — RAV4','Nafta','Elektřina (nabíjení)','Pojištění','Servis','Dálniční známka','Parkování','MHD','Mytí auta','Pneumatiky']},
   {k:'potraviny',  i:'🛒',l:'Potraviny',      s:['Supermarket','Tržnice','Drogerie','Alkohol']},
   {k:'stravovani', i:'🍽',l:'Stravování',     s:['Restaurace','Kavárna','Rozvoz','Fast food']},
   {k:'deti',       i:'👶',l:'Děti',           s:['Jesle / školka','Kroužky','Oblečení','Hračky','Lékaři','Kapesné','Výlety']},
@@ -431,7 +431,10 @@ function openAdd(){
 function buildAddForm(){
   var html='<div class="amount-box">'
     +'<input id="amt" class="amt-inp" type="number" inputmode="decimal" placeholder="0">'
-    +'<input id="dt" class="date-inp" type="date" value="'+today()+'">'
+    +'<div style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">'
+    +'<span style="font-size:13px;color:#6c6c70">📅</span>'
+    +'<input id="dt" type="date" value="'+today()+'" style="font-size:15px;color:#1c1c1e;border:none;background:none;outline:none;font-family:inherit">'
+    +'</div>'
     +'</div>'
     +'<div class="sec-hdr">Kategorie</div>'
     +'<div class="cat-grid">';
