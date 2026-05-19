@@ -288,6 +288,12 @@ async function syncNow(){
 
 function showToast(m){
   var t=document.getElementById('toast');
+  if(!t){
+    t=document.createElement('div');
+    t.id='toast';
+    t.className='toast';
+    document.body.appendChild(t);
+  }
   t.textContent=m;t.className='toast on';
   setTimeout(function(){t.className='toast'},2000);
 }
