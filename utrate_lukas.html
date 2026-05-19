@@ -505,7 +505,7 @@ function doSave(){
   exps.push(entry);
   ghSave();
   showToast('Uloženo ✓');
-  goHome();
+  setTimeout(function(){goHome();}, 800);
 }
 
 function renderHome(){
