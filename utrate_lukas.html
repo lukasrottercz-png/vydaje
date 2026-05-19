@@ -106,6 +106,8 @@ body{font-family:-apple-system,sans-serif;background:#f2f2f7;color:#1c1c1e;min-h
   <div class="content" id="trvale-form-content"></div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
 var CATS=[
   {k:'bydleni',    i:'🏠',l:'Bydlení',       s:['Nájem / záloha','Elektřina','Plyn','Internet','Opravy','Vybavení','Zahrada']},
@@ -172,12 +174,20 @@ async function ghSave(){
   if(!token){saveAll();return;}
   try{
     var json=JSON.stringify(exps,null,2);
-    // Správné kódování pro UTF-8 s diakritikou
-    var bytes=new TextEncoder().encode(json);
+    var bytes2=new TextEncoder().encode(json);
     var binary='';
-    bytes.forEach(function(b){binary+=String.fromCharCode(b);});
+    bytes2.forEach(function(b){binary+=String.fromCharCode(b);});
     var content=btoa(binary);
     var sha=localStorage.getItem('gh_sha_v')||'';
+
+    // Pokud nemáme SHA, načteme ho
+    if(!sha){
+      var chk=await fetch('https://api.github.com/repos/'+GH_USER+'/'+GH_REPO+'/contents/'+GH_FILE,{
+        headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+      });
+      if(chk.ok){var cd=await chk.json();sha=cd.sha;localStorage.setItem('gh_sha_v',sha);}
+    }
+
     var bodyObj={message:'Výdaje '+new Date().toISOString().slice(0,10),content:content};
     if(sha)bodyObj.sha=sha;
     var res=await fetch('https://api.github.com/repos/'+GH_USER+'/'+GH_REPO+'/contents/'+GH_FILE,{
@@ -185,12 +195,29 @@ async function ghSave(){
       headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
       body:JSON.stringify(bodyObj)
     });
+
+    // 409 = SHA konflikt — načti aktuální SHA a zkus znovu
+    if(res.status===409){
+      var chk2=await fetch('https://api.github.com/repos/'+GH_USER+'/'+GH_REPO+'/contents/'+GH_FILE,{
+        headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+      });
+      if(chk2.ok){var cd2=await chk2.json();sha=cd2.sha;localStorage.setItem('gh_sha_v',sha);}
+      bodyObj.sha=sha;
+      res=await fetch('https://api.github.com/repos/'+GH_USER+'/'+GH_REPO+'/contents/'+GH_FILE,{
+        method:'PUT',
+        headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+        body:JSON.stringify(bodyObj)
+      });
+    }
+
     if(!res.ok)throw new Error('GitHub save error '+res.status);
     var data=await res.json();
     localStorage.setItem('gh_sha_v',data.content.sha);
-    localStorage.setItem('lkv3',JSON.stringify(exps));
+    saveAll();
   }catch(e){console.error('ghSave:',e);saveAll();showToast('GitHub nedostupný — uloženo lokálně');}
 }
+
+function saveAll(){try{localStorage.setItem('lkv3',JSON.stringify(exps))}catch(e){}}
 
 function saveGhToken(){
   var inp=document.getElementById('gh-token-inp');
