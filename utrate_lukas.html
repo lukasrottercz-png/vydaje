@@ -10,7 +10,8 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,sans-serif;background:#f2f2f7;color:#1c1c1e;min-height:100vh;padding-bottom:100px}
-.navbar{background:#fff;border-bottom:0.5px solid rgba(0,0,0,0.1);padding:16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.navbar{background:#fff;border-bottom:0.5px solid rgba(0,0,0,0.1);padding:14px 0;position:sticky;top:0;z-index:10}
+.navbar-inner{max-width:700px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
 .navbar-title{font-size:17px;font-weight:600;color:#1c1c1e}
 .nav-btn{background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:15px;font-weight:600;cursor:pointer}
 .tabbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:0.5px solid rgba(0,0,0,0.1);display:flex;padding:8px 0 20px;z-index:10}
@@ -75,12 +76,14 @@ body{font-family:-apple-system,sans-serif;background:#f2f2f7;color:#1c1c1e;min-h
 
 <div id="home-page">
   <div class="navbar">
-    <button class="nav-btn" id="nav-sync" onclick="syncNow()" style="background:none;color:#007aff;font-size:20px;padding:4px 8px">↻</button>
-    <span class="navbar-title" id="nav-title">Výdaje</span>
-    <div style="display:flex;align-items:center;gap:6px">
-      <a href="https://lukasrottercz-png.github.io/finance/finance_tracker.html" style="font-size:11px;padding:4px 8px;border-radius:20px;border:1px solid #e0e0e0;color:#6c6c70;text-decoration:none">💰</a>
-      <a href="https://lukasrottercz-png.github.io/finance/ukoly.html" style="font-size:11px;padding:4px 8px;border-radius:20px;border:1px solid #e0e0e0;color:#6c6c70;text-decoration:none">📅</a>
-      <button class="nav-btn" id="nav-action" onclick="openAdd()">+ Přidat</button>
+    <div class="navbar-inner">
+      <button class="nav-btn" id="nav-sync" onclick="syncNow()" style="background:none;color:#7c3aed;font-size:20px;padding:4px 8px">↻</button>
+      <span class="navbar-title" id="nav-title">Výdaje</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <a href="https://lukasrottercz-png.github.io/finance/finance_tracker.html" style="font-size:12px;padding:5px 10px;border-radius:20px;border:0.5px solid rgba(0,0,0,0.1);color:#6c6c70;text-decoration:none">💰 Finance</a>
+        <a href="https://lukasrottercz-png.github.io/finance/ukoly.html" style="font-size:12px;padding:5px 10px;border-radius:20px;border:0.5px solid rgba(0,0,0,0.1);color:#6c6c70;text-decoration:none">📋 Úkoly</a>
+        <button class="nav-btn" id="nav-action" onclick="openAdd()">+ Přidat</button>
+      </div>
     </div>
   </div>
   <div class="content" id="main-content"></div>
