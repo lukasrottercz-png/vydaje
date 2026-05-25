@@ -527,15 +527,23 @@ function pickSub(s){
 var editExpId = null;
 
 function showExpMenu(id, btn) {
-  document.getElementById('card-menu')?.remove();
+  document.getElementById('card-menu') && document.getElementById('card-menu').remove();
   var rect = btn.getBoundingClientRect();
   var menu = document.createElement('div');
   menu.id = 'card-menu';
   menu.style.cssText = 'position:fixed;top:'+(rect.bottom+4)+'px;right:'+(window.innerWidth-rect.right)+'px;background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:13px;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:300;min-width:140px;overflow:hidden';
-  menu.innerHTML = '<button onclick="document.getElementById(\'card-menu\')?.remove();openEditExp(\''+id+'\')" style="display:block;width:100%;padding:13px 16px;background:none;border:none;border-bottom:0.5px solid #f0f0f0;text-align:left;font-size:15px;font-family:inherit;color:#1c1c1e;cursor:pointer">✏️ Upravit</button>'
-    +'<button onclick="document.getElementById(\'card-menu\')?.remove();delExp(\''+id+'\')" style="display:block;width:100%;padding:13px 16px;background:none;border:none;text-align:left;font-size:15px;font-family:inherit;color:#ff3b30;cursor:pointer">🗑 Smazat</button>';
+  var editBtn = document.createElement('button');
+  editBtn.textContent = '✏️ Upravit';
+  editBtn.style.cssText = 'display:block;width:100%;padding:13px 16px;background:none;border:none;border-bottom:0.5px solid #f0f0f0;text-align:left;font-size:15px;font-family:inherit;color:#1c1c1e;cursor:pointer';
+  editBtn.onclick = function(){ menu.remove(); openEditExp(id); };
+  var delBtn = document.createElement('button');
+  delBtn.textContent = '🗑 Smazat';
+  delBtn.style.cssText = 'display:block;width:100%;padding:13px 16px;background:none;border:none;text-align:left;font-size:15px;font-family:inherit;color:#ff3b30;cursor:pointer';
+  delBtn.onclick = function(){ menu.remove(); delExp(id); };
+  menu.appendChild(editBtn);
+  menu.appendChild(delBtn);
   document.body.appendChild(menu);
-  setTimeout(function(){document.addEventListener('click',function(){document.getElementById('card-menu')?.remove();},{once:true});},10);
+  setTimeout(function(){ document.addEventListener('click', function h(){ menu.remove(); document.removeEventListener('click',h); }); }, 10);
 }
 
 function openEditExp(id) {
