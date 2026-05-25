@@ -491,28 +491,78 @@ function buildAddForm(){
   document.getElementById('add-content').innerHTML=html;
 }
 
+// Vlastní podkategorie — uložené v localStorage per kategorie
+function loadCustomSubs(catKey) {
+  try { return JSON.parse(localStorage.getItem('custom_subs_'+catKey)||'[]'); } catch(e) { return []; }
+}
+function saveCustomSubs(catKey, subs) {
+  localStorage.setItem('custom_subs_'+catKey, JSON.stringify(subs));
+}
+
 function pickCat(k){
   selCat=k;selSub='';
-  // Zvýrazni vybranou kategorii
   for(var i=0;i<CATS.length;i++){
     var el=document.getElementById('cb-'+CATS[i].k);
     if(el)el.className='cat-btn'+(CATS[i].k===k?' on':'');
   }
-  // Zobraz podkategorie
+  renderSubcats(k);
+}
+
+function renderSubcats(k) {
   var cat=catByKey(k);
+  var customSubs=loadCustomSubs(k);
+  var allSubs=(cat?cat.s:[]).concat(customSubs);
   var html='';
-  if(cat){
+  if(allSubs.length||cat){
     html='<div class="sec-hdr">Podkategorie</div><div class="sub-list">';
-    for(var j=0;j<cat.s.length;j++){
-      var s=cat.s[j];
-      html+='<div class="sub-item" id="si-'+j+'" onclick="pickSub(\''+s.replace(/'/g,"\\'")+'\')">'
-        +'<div class="sub-dot">✓</div>'
-        +'<span class="sub-lbl">'+s+'</span>'
-        +'</div>';
+    // Pevné podkategorie
+    if(cat){
+      for(var j=0;j<cat.s.length;j++){
+        var s=cat.s[j];
+        html+='<div class="sub-item" id="si-'+j+'" onclick="pickSub(\''+s.replace(/'/g,"\\'")+'\')">'
+          +'<div class="sub-dot">✓</div>'
+          +'<span class="sub-lbl">'+s+'</span>'
+          +'</div>';
+      }
     }
+    // Vlastní podkategorie
+    for(var c=0;c<customSubs.length;c++){
+      var cs=customSubs[c];
+      html+='<div class="sub-item" onclick="pickSub(\''+cs.replace(/'/g,"\\'")+'\')">'+
+        '<div class="sub-dot">✓</div>'+
+        '<span class="sub-lbl">'+cs+'</span>'+
+        '<button onclick="event.stopPropagation();deleteCustomSub(\''+k+'\',\''+cs.replace(/'/g,"\\'")+'\');" style="background:none;border:none;cursor:pointer;color:#ff3b30;font-size:13px;margin-left:auto;padding:0 4px">✕</button>'+
+        '</div>';
+    }
+    // Tlačítko přidat vlastní
+    html+='<div style="padding:8px 4px">'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<input type="text" id="custom-sub-inp" placeholder="+ Vlastní podkategorie…" style="flex:1;padding:8px 10px;border-radius:10px;border:0.5px solid rgba(0,0,0,0.1);font-size:14px;font-family:inherit;background:#f2f2f7;color:#1c1c1e;outline:none">'
+      +'<button onclick="addCustomSub(\''+k+'\')" style="padding:8px 12px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">Přidat</button>'
+      +'</div>'
+      +'</div>';
     html+='</div>';
   }
   document.getElementById('sub-section').innerHTML=html;
+}
+
+function addCustomSub(catKey) {
+  var inp = document.getElementById('custom-sub-inp');
+  if (!inp || !inp.value.trim()) return;
+  var val = inp.value.trim();
+  var subs = loadCustomSubs(catKey);
+  if (subs.indexOf(val) === -1) { subs.push(val); saveCustomSubs(catKey, subs); }
+  pickSub(val);
+  renderSubcats(catKey);
+  // Označ novou podkategorii
+  setTimeout(function(){ pickSub(val); renderSubcats(catKey); }, 50);
+}
+
+function deleteCustomSub(catKey, sub) {
+  var subs = loadCustomSubs(catKey).filter(function(s){ return s !== sub; });
+  saveCustomSubs(catKey, subs);
+  if (selSub === sub) selSub = '';
+  renderSubcats(catKey);
 }
 
 function pickSub(s){
