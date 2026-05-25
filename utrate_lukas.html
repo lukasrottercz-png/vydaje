@@ -721,29 +721,60 @@ function renderKat(){
   var now=new Date();
   var thisM=exps.filter(function(e){var d=new Date(e.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()});
   var byCat={};
-  thisM.forEach(function(e){if(!byCat[e.catKey])byCat[e.catKey]=0;byCat[e.catKey]+=e.amount||0});
-  var total=Object.values(byCat).reduce(function(s,v){return s+v},0);
-  var entries=Object.entries(byCat).sort(function(a,b){return b[1]-a[1]});
+  thisM.forEach(function(e){
+    if(!byCat[e.catKey])byCat[e.catKey]={total:0,subs:{}};
+    byCat[e.catKey].total+=e.amount||0;
+    var sub=e.subcat||'(bez podkategorie)';
+    if(!byCat[e.catKey].subs[sub])byCat[e.catKey].subs[sub]=0;
+    byCat[e.catKey].subs[sub]+=e.amount||0;
+  });
+  var total=Object.values(byCat).reduce(function(s,v){return s+v.total},0);
+  var entries=Object.entries(byCat).sort(function(a,b){return b[1].total-a[1].total});
   var monthLbl=now.toLocaleDateString('cs-CZ',{month:'long',year:'numeric'});
-  var h='<div class="sec-hdr">'+monthLbl+' — '+fmt(total)+'</div><div class="card">';
+  var h='<div class="sec-hdr">'+monthLbl+' — '+fmt(total)+'</div>';
   entries.forEach(function(pair){
     var k=pair[0],v=pair[1];
     var cat=catByKey(k);
-    var pct=total>0?Math.round(v/total*100):0;
-    h+='<div class="exp-row">'
+    var pct=total>0?Math.round(v.total/total*100):0;
+    var subEntries=Object.entries(v.subs).sort(function(a,b){return b[1]-a[1]});
+    var catId='cat-sub-'+k;
+    h+='<div class="card" style="margin-bottom:8px">'
+      +'<div class="exp-row" onclick="toggleKatSubs(\''+catId+'\')" style="cursor:pointer">'
       +'<div class="exp-ico">'+(cat?cat.i:'❓')+'</div>'
       +'<div class="exp-info">'
       +'<div class="exp-cat">'+(cat?cat.l:k)+'</div>'
       +'<div class="bar-bg"><div class="bar-fill" style="width:'+pct+'%"></div></div>'
       +'</div>'
       +'<div style="text-align:right;flex-shrink:0">'
-      +'<div class="exp-amt">'+fmt(v)+'</div>'
-      +'<div style="font-size:12px;color:#8e8e93">'+pct+' %</div>'
+      +'<div class="exp-amt">'+fmt(v.total)+'</div>'
+      +'<div style="font-size:12px;color:#8e8e93">'+pct+' % <span id="chev-'+catId+'" style="display:inline-block;transition:transform 0.2s">▼</span></div>'
       +'</div>'
-      +'</div>';
+      +'</div>'
+      // Podkategorie — defaultně skryté
+      +'<div id="'+catId+'" style="display:none;border-top:0.5px solid #f0f0f0">';
+    subEntries.forEach(function(sp){
+      var sk=sp[0],sv=sp[1];
+      var spct=v.total>0?Math.round(sv/v.total*100):0;
+      h+='<div class="exp-row" style="padding-left:48px;background:#f9f9f9">'
+        +'<div class="exp-info"><div class="exp-cat" style="font-size:13px;color:#3c3c3c">'+sk+'</div></div>'
+        +'<div style="text-align:right;flex-shrink:0">'
+        +'<div style="font-size:13px;font-weight:500;color:#ff3b30">'+fmt(sv)+'</div>'
+        +'<div style="font-size:11px;color:#8e8e93">'+spct+' %</div>'
+        +'</div>'
+        +'</div>';
+    });
+    h+='</div></div>';
   });
-  h+='</div>';
   return h;
+}
+
+function toggleKatSubs(id) {
+  var el=document.getElementById(id);
+  var chev=document.getElementById('chev-'+id);
+  if(!el)return;
+  var open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  if(chev)chev.style.transform=open?'':'rotate(180deg)';
 }
 
 function renderExport(){
